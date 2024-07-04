@@ -26,12 +26,14 @@ class Sales(models.Model):
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity_sold =models.IntegerField(default=0)
     total_amount = models.DecimalField(max_digits=10, decimal_places=2)
+    date = models.DateTimeField(auto_now_add=True)
 
 class Returns(models.Model):
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     quantity_returned = models.IntegerField()
-
+    reason= models.TextField(blank=True)
+    date = models.DateTimeField(auto_now_add=True)
 
 class Invoice(models.Model):
     transaction = models.OneToOneField(Transaction, on_delete=models.CASCADE)
