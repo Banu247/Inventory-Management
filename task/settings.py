@@ -48,8 +48,8 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    'TITLE': 'Your Project API',
-    'DESCRIPTION': 'Your project description',
+    'TITLE': 'Inventory Management',
+    'DESCRIPTION': 'class-based Python application for managing inventory that includes features for tracking sales, returns and generating invoices, in PDF format.',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     # OTHER SETTINGS
