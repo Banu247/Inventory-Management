@@ -1,3 +1,4 @@
+from datetime import datetime
 from django.shortcuts import render
 from rest_framework import viewsets
 from inventoryapp.models import Inventory,Sales,Product,Transaction,Returns,Invoice
@@ -12,15 +13,14 @@ from rest_framework.views import APIView
 import os
 
 
-# Create your views here.
 @extend_schema(request=Inventory_serializer,responses=Inventory_serializer, tags=['inventory'])
-
 class Inventory_details(viewsets.ModelViewSet):
+    '''API to Get,Retrive,Update,Delete,Patch,Create Inventory'''
     serializer_class = Inventory_serializer
     queryset = Inventory.objects.all()
 
 class Sales_info(viewsets.ViewSet):
-
+    '''API to fetch sales details'''
     serializer_class = Sales_serializer
     @extend_schema( tags=['sales'])
 
@@ -33,23 +33,21 @@ class Sales_info(viewsets.ViewSet):
 @extend_schema(request=Sales_serializer,responses=Sales_serializer, tags=['sales'])
 
 class SalesInventory(viewsets.ViewSet):
+    '''API to create sales'''
     def create(self,request):
         product_id = request.data.get('product_id') 
         quantity_sold= request.data.get('quantity_sold')
-        
-        if not product_id and  quantity_sold:
-            return Response({'Message': 'Product ID and quantity sold are required.'})
+        if not product_id or not quantity_sold:
+            return Response({'Message': 'Fields Required.'})
 
         product = Product.objects.filter(pk=product_id).first()
-
         if not product:
             return Response({'Message': 'Product not found.'})
         
         total_amount = quantity_sold*product.price
         transaction = Transaction.objects.create(type='sale')
 
-        
-
+    
         sales = Sales.objects.create(
             transcation=transaction,
             product_id=product,
@@ -70,12 +68,15 @@ class SalesInventory(viewsets.ViewSet):
         serializer = Sales_serializer(sales)
         response_data = serializer.data
         response_data['total_amount'] = total_amount
+        response_data['date'] = datetime.now()
+
 
         return Response(response_data)
 
 
 
 class Getreturndetails(viewsets.ViewSet):
+    '''API to fetch Return details'''
     serializer_class = Returns_serializer
     @extend_schema( tags=['Return'])
 
@@ -87,6 +88,7 @@ class Getreturndetails(viewsets.ViewSet):
     
 @extend_schema(request=Returns_serializer,responses=Returns_serializer, tags=['returns'])
 class CreateReturn(viewsets.ViewSet):
+    '''API for initiating returns'''
     serializer_class =Returns_serializer
     @extend_schema( tags=['Return'])
 
@@ -97,9 +99,11 @@ class CreateReturn(viewsets.ViewSet):
         quantity_return = request.data.get('quantity_returned')
         reason =request.data.get('reason')
 
+        if product_id<=0 or  quantity_return<=0 or reason=="string":
+            return Response({"Message":"Fields Required!!!"})
+        
         product =Product.objects.filter(pk=product_id).first()
-        print(product)
-        print(product.product_name)
+
         if not product:
             return Response({'Message': 'Product not found.'})
         
@@ -121,44 +125,42 @@ class CreateReturn(viewsets.ViewSet):
 
 
         serialiser = self.serializer_class(returns)
-        data=[]
-        data.append({
-            "serialiser": {
-                    "product_name": product.product_name
-                    **serialiser.data,
-                }
-            })
-                # serialiser = self.serializer_class(returns)
+        field=serialiser.data
+        data={
+            "product_name": product.product_name,
+            "Product_id":field['product_id'],
+            "quantity_returned":field['quantity_returned'],
+            "reason":field["reason"],
+            "transaction_id":transaction.id,
+            "return_date":datetime.now()
+        }
+            
         return Response(data)
 
 
 class Invoice_details(APIView):
-    # lookup_field = 'transaction_id'
-    serializer_class = Sales_serializer  # Specify the serializer class
+    '''API to generate Invoice based on transaction_id'''
+    serializer_class = Sales_serializer  
     @extend_schema(
         tags=['Invoices']  
     )
 
     def get(self, request, transaction_id=None):
-        # Retrieve the transaction data
         transaction = Transaction.objects.filter(pk=transaction_id).first()
         if not transaction:
             return Response({"Message": "Details not found"})
 
-        # Retrieve sales related to the transaction
     
         sales = Sales.objects.filter(transcation=transaction)
         if not sales.exists():
             return Response({"Message": "No sales found for this transaction"})
         
-        print(sales,"********************"*10)
         product_name =None
         total_amount=None
         for i in sales:
 
             product_name = i.product_id.product_name
             total_amount= i.total_amount
-        # Serialize the sales data
         serializer = self.serializer_class(sales, many=True)
 
         buffer = BytesIO()
@@ -172,7 +174,7 @@ class Invoice_details(APIView):
         # pdf.setFont("Helvetica-Bold", 12)
         y_position = 690
         line_height = 20
-        print(serializer.data)
+
         for sale in serializer.data:
             pdf.drawString(120, y_position, f"Product_Name:{product_name} ")
             pdf.drawString(320, y_position, f"Quantity Sold: {sale['quantity_sold']}")
@@ -185,7 +187,6 @@ class Invoice_details(APIView):
         pdf.showPage()
         pdf.save()
 
-        # Save the PDF file
         file_name = f"invoice_{transaction_id}.pdf"
         file_directory = 'invoices'
         file_path = os.path.join(file_directory, file_name)
@@ -196,7 +197,6 @@ class Invoice_details(APIView):
         with open(file_path, 'wb') as f:
             f.write(buffer.getvalue())
 
-        # Save invoice record in database
         invoice, created = Invoice.objects.get_or_create(
             transaction=transaction,
             amount=total_amount,
@@ -211,6 +211,7 @@ class Invoice_details(APIView):
 
 
 class ListInvoices(APIView):
+    '''API to fetch  list all the invoices made for a specific product'''
     serializer_class = Invoice_serializer
     @extend_schema(
         tags=['Invoices']
@@ -224,27 +225,23 @@ class ListInvoices(APIView):
 
         query_set = data.sales_set.all()
 
-        print
 
 
-        print(query_set,"*************"*10)
         transaction_id=None
         for i in query_set:
             transaction_id =i.transcation
-            print(i.transcation,"000000000000000000000000"*10)
 
-        res =[]
         try:
             realated_id = Invoice.objects.get(transaction=transaction_id)
         except Invoice.DoesNotExist:
             return Response({'Message':"No Invoice generated f0r the above product"})
-        print(realated_id,"999999999999999"*10)
         serialiser =Invoice_serializer(realated_id,many =False)
 
         return Response(serialiser.data)
 
 
 class GetProduct(APIView):
+    '''API to fetch the details of product'''
     serializer_class =Product_serializer
     @extend_schema(tags=['Products'])
     def get(self,request):
@@ -254,6 +251,7 @@ class GetProduct(APIView):
         return Response(serialiser.data)
 
 class Createproduct(APIView):
+    '''API to create product'''
     serializer_class =Product_serializer
     @extend_schema(request=Product_serializer,tags=['Products'])
 
@@ -261,7 +259,6 @@ class Createproduct(APIView):
         pro_name =request.data.get('product_name')
         descrip =request.data.get('description')
         price =request.data.get('price')
-        print(pro_name,descrip,price,"---------------------------"*20)
         if pro_name == 'string'  or  descrip == 'string' or int(price)<=0:
             return Response({'Message':'Required fields are not provided'})
         
@@ -273,6 +270,7 @@ class Createproduct(APIView):
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 class FetchTranscationId(APIView):
+    '''API to fetch all the transaction_id related to sales'''
     @extend_schema(request=Product_serializer,tags=['Invoices'])
 
     def get(self,request):
@@ -284,3 +282,6 @@ class FetchTranscationId(APIView):
                 "transcation_id":i.id
             })
         return Response({"info":data})
+    
+
+

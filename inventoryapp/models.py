@@ -36,7 +36,7 @@ class Sales(models.Model):
 class Returns(models.Model):
     transaction = models.ForeignKey(Transaction, on_delete=models.CASCADE)
     product_id = models.ForeignKey(Product, on_delete=models.CASCADE)
-    quantity_returned = models.IntegerField()
+    quantity_returned = models.BigIntegerField(default=0)
     reason= models.TextField(blank=True)
     date = models.DateTimeField(auto_now_add=True)
 

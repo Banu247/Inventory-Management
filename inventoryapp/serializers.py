@@ -9,12 +9,12 @@ class Inventory_serializer(serializers.ModelSerializer):
 class Sales_serializer(serializers.ModelSerializer):
     class Meta:
         model = Sales
-        fields=['transcation','product_id','quantity_sold']
+        fields=['product_id','quantity_sold']
 
 class Returns_serializer(serializers.ModelSerializer):
     class Meta:
         model = Returns
-        fields='__all__'
+        fields=['product_id','quantity_returned','reason']
 
 
 class Invoice_serializer(serializers.ModelSerializer):

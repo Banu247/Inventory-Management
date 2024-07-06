@@ -9,7 +9,7 @@ from inventoryapp.views import Inventory_details,Sales_info,SalesInventory,Getre
 router = DefaultRouter()
 router.register('inventory', Inventory_details, basename='Inventory')
 router.register('Get-Sales-Details',Sales_info,basename='sales')
-router.register('Salesinfo',SalesInventory,basename='sales')
+router.register('Sale-product',SalesInventory,basename='sales')
 router.register('Get-return-details',Getreturndetails,basename='returns')
 router.register('Return-product',CreateReturn,basename='returns')
 # router.register('All-products',GetProduct,basename='Products')
